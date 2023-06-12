@@ -16,6 +16,7 @@ class Question(Base):
     __tablename__ = 'questions'
     id = Column(String, primary_key=True)
     category_id = Column(ForeignKey(Category.id))
+    category = relationship(Category)
     difficulty = Column(String)
     aired = Column(String)
     question = Column(String)

@@ -1,5 +1,5 @@
 venv
-tools/Questions
+scripts/Questions
 data.db
 __pycache__
 build

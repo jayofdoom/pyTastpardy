@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[metadata]
+name = "tastpardy"
+version = "0.1.0"
+description = "Tasty game where you I give you the food and you tell me the order."
+author = "Jay Faulkner"
+author_email = "jay@jvf.cc"
+license = "Apache 2.0"
+
+[options]
+install_requires = 
+    sqlalchemy>=2.0
