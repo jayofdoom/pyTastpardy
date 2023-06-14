@@ -3,7 +3,7 @@ import time
 from sqlalchemy import func
 
 from tastpardy.db import DBClient
-from tastpardy.models import Category, Question
+from tastpardy.models import Question
 
 session = DBClient().get_session()
 question = session.query(Question).order_by(func.random()).limit(1).one()
