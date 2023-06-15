@@ -1,10 +1,9 @@
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 # Create base class
-Base : DeclarativeMeta = declarative_base()
+Base = declarative_base()
 
 # Define table
 class Category(Base):  # type: ignore
@@ -22,3 +21,13 @@ class Question(Base):  # type: ignore
     aired = Column(String)
     question = Column(String)
     answer = Column(String)
+
+
+class Player(Base):  # type: ignore
+    __tablename__ = 'players'
+    id = Column(String, primary_key=True)
+    name = Column(String)
+    score = Column(Integer)
+    cur_game_score = Column(Integer)
+    cur_game_id = Column(String)
+

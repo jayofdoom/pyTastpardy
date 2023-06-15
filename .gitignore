@@ -4,3 +4,5 @@ data.db
 __pycache__
 build
 *egg-info*
+typings
+.mypy_cache
