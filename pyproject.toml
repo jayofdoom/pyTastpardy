@@ -9,7 +9,9 @@ description = "Tasty game where you I give you the food and you tell me the orde
 author = "Jay Faulkner"
 author_email = "jay@jvf.cc"
 license = "Apache 2.0"
-
-[options]
-install_requires = 
-    sqlalchemy>=2.0
+dependencies = [
+    'sqlalchemy>=2.0',
+    'fuzzywuzzy',
+    'pyyaml',
+    'python-Levenshtein'
+]
