@@ -7,9 +7,7 @@ cares to use this, open an issue or something and maybe I'll get serious :).
 
 Usage
 =====
-doesn't exist yet, but probably would look like
-
-`python -m tastpardy  --config ./path/to/config.json --dbpath ./path/to/data.db`
+`python -m tastpardy  --config ./configexample.json`
 
 Vision
 ======
