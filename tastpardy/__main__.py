@@ -13,13 +13,12 @@ def tastpardy(config):
     try:
         with open(config) as f:
             conf = Config.from_json(f.read())  # type: ignore
-        print(conf)
     except FileNotFoundError:
         print("Config file not found. Please create a config file in the style of configexample.json.")
         exit(1)
     except Exception as e:
         print("Unknown error: {}".format(e))
-        exit(1)
+        raise e
 
     # TODO: Add config for, or based on contents on config, do more than a single
     # IRC bot. For now, everything assumes exactly one IRC bot.

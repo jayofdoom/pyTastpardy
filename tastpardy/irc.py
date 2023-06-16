@@ -14,7 +14,7 @@ class TastyIRCBot(irc.bot.SingleServerIRCBot):
         self.channel = self.conf.channel
         # I'll have to figure out some kind of interface to send messages to/from the game
         # so that it'll be at least theorertically capable of running on more than just IRC
-        self.game = Game()
+        self.game = Game(dbpath=dbpath)
 
         connect_params = {}
         if conf.ssl:
