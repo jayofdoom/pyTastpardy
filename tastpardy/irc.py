@@ -1,25 +1,59 @@
+from dataclasses import dataclass
 import ssl
 import time
+from typing import Callable
 
 import irc.bot
 import irc.connection
 import irc.strings
 
 from tastpardy.config import IRCConfig
-from tastpardy.game import Game
+from tastpardy.game import Game, GameRunner
 
-class TastyIRCBot(irc.bot.SingleServerIRCBot):
+
+@dataclass
+class BotCommand(object):
+    admin: bool
+    func: Callable
+
+
+commands : dict[str, BotCommand] = {}
+
+
+def command(name: str, admin: bool=False):
+    def decorator(func: Callable):
+        commands[name] = BotCommand(admin=admin, func=func)
+        return func
+    return decorator
+
+
+class TastyIRCBot(irc.bot.SingleServerIRCBot, GameRunner):
     def __init__(self, dbpath : str, conf : IRCConfig):
         self.conf = conf
         self.channel = self.conf.channel
         # I'll have to figure out some kind of interface to send messages to/from the game
         # so that it'll be at least theorertically capable of running on more than just IRC
-        self.game = Game(dbpath=dbpath)
+        self.game = Game(self, dbpath=dbpath)
 
         connect_params = {}
         if conf.ssl:
             connect_params["connect_factory"] = irc.connection.Factory(wrapper=ssl.wrap_socket)  # type: ignore
         irc.bot.SingleServerIRCBot.__init__(self, [(conf.server, conf.port)], conf.nick, None, recon=irc.bot.ExponentialBackoff(), **connect_params)
+
+        # Register commands from the base class
+        command("disconnect", admin=True)(self.disconnect)
+        command("die", admin=True)(self.die)
+    
+    def public_message(self, message: list[str]):
+        for m in message:
+            self.connection.privmsg(self.channel, m)
+
+    def private_message(self, nick: str, message: list[str]):
+        for m in message:
+            self.connection.privmsg(nick, m)
+
+    def wait(self, seconds: int|float):
+        time.sleep(seconds)
 
     def on_nicknameinuse(self, c, e):
         c.nick(c.get_nickname() + "_")
@@ -31,70 +65,43 @@ class TastyIRCBot(irc.bot.SingleServerIRCBot):
         c.join(self.channel)
 
     def on_privmsg(self, c, e):
-        self.do_command(e, e.arguments[0])
+        self.connection.privmsg(e.source.nick, "Don't eat in secret, be proud and tasty. Only message me in channel.")
 
     def on_pubmsg(self, c, e):
-        a = e.arguments[0].split(":", 1)
-        if len(a) > 1 and irc.strings.lower(a[0]) == irc.strings.lower(
-            self.connection.get_nickname()
-        ):
-            self.do_command(e, a[1].strip())
-        return
-
-    def single_question(self, c):
-        c.privmsg(self.conf.channel,
-                  "Let's play Tastpardy! Only one question though, because I'm lazy. "
-                  "You'll get 30 seconds to think, then I'll give you the answer!")
-        question = self.game.single_question()
-        c.privmsg(self.channel, "-------------------")
-        c.privmsg(self.channel,
-                  "Air Date: {}. "
-                  "Difficulty: {}. "
-                  "Category: {}"
-                  .format(question.aired,
-                          question.difficulty,
-                          question.category.name))
-        c.privmsg(self.channel, "-------------------")
-        c.privmsg(self.channel, question.question)
-        time.sleep(30)
-        c.privmsg(self.channel, "The answer was: What is {}? I hope you got it right!".format(question.answer))
-
-    def admin_command(self, nick, runner, *args):
-        # Check if nick is an admin. If we have no admins, YOLO.
-        # Warning: this means there is basically zero security if you use
-        # an IRC network with weak services.
-        if not self.conf.admins or nick in self.conf.admins:
-            runner(*args)
+        if e.arguments[0][0] == "?":
+            self.handle_command(e.source.nick, e.arguments[0][1:].strip())
         else:
-            raise PermissionError("You are not an admin.")
+            target_nick = e.arguments[0].split(":", 1)[0].strip()
+            if target_nick and irc.strings.lower(target_nick) == irc.strings.lower(self.connection.get_nickname()):
+                self.handle_command(e.source.nick, e.arguments[0].split(":", 1)[1].strip())
 
-    def _stats(self, c, nick):
+    def handle_command(self, nick, cmd):
+        if cmd in commands:
+            if commands[cmd].admin and self.conf.admins:
+                if nick not in self.conf.admins:
+                   self.not_tasty(nick)
+                   return
+
+            commands[cmd].func(self, nick)
+        else:
+            self.not_tasty(nick)
+    
+    def not_tasty(self, nick):
+        self.connection.notice(nick, "Not tasty.")
+
+    @command("question")
+    def single_question(self, nick):
+        self.game.single_question()
+
+    @command("stats", admin=True)
+    def stats(self, nick):
         for chname, chobj in self.channels.items():
-            c.notice(nick, "--- Channel statistics ---")
-            c.notice(nick, "Channel: " + chname)
-            users = sorted(chobj.users())
-            c.notice(nick, "Users: " + ", ".join(users))
-            opers = sorted(chobj.opers())
-            c.notice(nick, "Opers: " + ", ".join(opers))
-            voiced = sorted(chobj.voiced())
-            c.notice(nick, "Voiced: " + ", ".join(voiced))
+            self.connection.notice(nick, "--- Channel statistics ---")
+            self.connection.notice(nick, "Channel: " + chname)
+            self.connection.notice(nick, "Users: " + ", ".join(sorted(chobj.users())))
+            self.connection.notice(nick, "Opers: " + ", ".join(sorted(chobj.opers())))
+            self.connection.notice(nick, "Voiced: " + ", ".join(sorted(chobj.voiced())))
 
-    def do_command(self, e, cmd):
-        nick = e.source.nick
-        c = self.connection
-
-        try:
-            if cmd == "botsnacks":
-                c.privmsg(self.channel, "It's Tasty Tasty, very very Tasty!")
-            elif cmd == "question":
-                self.single_question(c)
-            elif cmd == "disconnect":
-                self.admin_command(nick, self.disconnect)
-            elif cmd == "die":
-                self.admin_command(nick, self.die)
-            elif cmd == "stats":
-                self.admin_command(nick, self._stats, c, nick)
-            else:
-                c.notice(nick, "Not tasty.")
-        except PermissionError:
-            c.notice(nick, "Not tasty.")
+    @command("botsnacks")
+    def botsnacks(self, nick):
+        self.connection.privmsg(self.channel, "It's Tasty Tasty, very very Tasty!")
