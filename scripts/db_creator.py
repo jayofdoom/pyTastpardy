@@ -2,7 +2,7 @@ import os
 import re
 import uuid
 
-import yaml
+import yaml  # type: ignore
 
 from tastpardy.models import Category, Question
 from tastpardy.db import DBClient

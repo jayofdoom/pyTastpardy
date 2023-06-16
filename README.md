@@ -9,7 +9,7 @@ Usage
 =====
 doesn't exist yet, but probably would look like
 
-python -m tastpardy  --config ./path/to/config.json --dbpath ./path/to/data.db
+`python -m tastpardy  --config ./path/to/config.json --dbpath ./path/to/data.db`
 
 Vision
 ======

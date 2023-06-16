@@ -1,0 +1,15 @@
+{
+    "irc": [{
+        "server": "irc.example.com",
+        "port": 6667,
+        "ssl": false,
+        "nick": "IDidntChangeMyNick",
+        "pw": "hunter2",
+        "channel": "#example",
+        "admins": [
+            "daddyBot",
+            "mommyBot"
+        ]
+    }],
+    "dbpath": "/path/to/my/sqlite-questions.db"
+}

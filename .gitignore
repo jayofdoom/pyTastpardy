@@ -6,3 +6,4 @@ build
 *egg-info*
 typings
 .mypy_cache
+config.json
