@@ -7,25 +7,12 @@ from irc.bot import ExponentialBackoff, SingleServerIRCBot
 from irc.connection import Factory
 import irc.strings
 
+from tastpardy.command import CommandRegistry
 from tastpardy.config import IRCConfig
-from tastpardy.game import Game, GameRunner
+from tastpardy.game import ChannelStats, Game, GameRunner
 
 
-@dataclass
-class BotCommand(object):
-    admin: bool
-    func: Callable[[Any, str, str], Any]
-
-
-commands: dict[str, BotCommand] = {}
-
-
-def command(name: str, admin: bool = False):
-    def decorator(func: Callable[[Any, str, str], None]):
-        commands[name] = BotCommand(admin=admin, func=func)
-        return func
-
-    return decorator
+irc_registry = CommandRegistry()
 
 
 class TastyIRCBot(SingleServerIRCBot, GameRunner):
@@ -55,6 +42,14 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
 
     def wait(self, seconds: int | float):
         time.sleep(seconds)
+    
+    def channel_stats(self) -> ChannelStats:
+        chname, chobj = self.channels[0]
+        return ChannelStats(
+            members=chobj.users(),
+            topic=chobj.topic,
+            name=chname,
+        )
 
     def on_nicknameinuse(self, c, e):
         c.nick(c.get_nickname() + "_")
@@ -80,25 +75,29 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
                     e.source.nick, e.arguments[0].split(":", 1)[1].strip(), self.channel
                 )
 
-    def handle_command(self, nick: str, cmd: str, target: str):
-        if cmd in commands:
-            if commands[cmd].admin and self.conf.admins:
+    def handle_command(self, nick: str, cmd_name: str, target: str):
+        # Always prioritize IRC commands over game commands
+        if cmd_name in irc_registry.commands:
+            cmd = irc_registry.commands[cmd_name]    
+            if cmd.admin and self.conf.admins:
                 if nick not in self.conf.admins:
                     self.not_tasty(nick)
-                    return
+                    return            
 
-            commands[cmd].func(self, nick, target)
-        else:
-            self.not_tasty(nick)
+            cmd.exec(self, nick, target)
 
     def not_tasty(self, nick: str):
         self.connection.notice(nick, "Not tasty.")
 
-    @command("question")
-    def single_question(self, nick: str, target: str):
+    @irc_registry.register("question")
+    def question(self, nick: str, target: str):
         self.game.single_question(target)
 
-    @command("stats", admin=True)
+    @irc_registry.register("botsnacks")
+    def botsnacks(self, nick: str, target: str):
+        self.connection.privmsg(target, "It's Tasty Tasty, very very Tasty!")
+
+    @irc_registry.register("stats", admin=True)
     def stats(self, nick: str, target: str):
         for chname, chobj in self.channels.items():
             self.connection.notice(nick, "--- Channel statistics ---")
@@ -107,11 +106,7 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
             self.connection.notice(nick, "Opers: " + ", ".join(sorted(chobj.opers())))
             self.connection.notice(nick, "Voiced: " + ", ".join(sorted(chobj.voiced())))
 
-    @command("botsnacks")
-    def botsnacks(self, nick: str, target: str):
-        self.connection.privmsg(target, "It's Tasty Tasty, very very Tasty!")
-
-    @command("disconnect", admin=True)
+    @irc_registry.register("disconnect", admin=True)
     def disconnect(self, nick: str, target: str):
         self.connection.disconnect(
             "My manager, {} said I could go home early.".format(nick)

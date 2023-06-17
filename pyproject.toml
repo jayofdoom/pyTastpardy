@@ -30,3 +30,6 @@ dev = [
     'mypy',
     'mypy-extensions',
 ]
+
+[tool.mypy]
+disable_error_code = 'annotation-unchecked'

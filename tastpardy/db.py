@@ -23,7 +23,7 @@ class DBClient(object):
 
 
 @event.listens_for(Engine, "connect")
-def _set_sqlite_pragma(dbapi_connection: Connection, _):  # type: ignore
+def _set_sqlite_pragma(dbapi_connection: Connection, _):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON;")
     cursor.close()

@@ -1,10 +1,18 @@
 import abc
+from dataclasses import dataclass
 import uuid
 
 from sqlalchemy import func
 
 from tastpardy.db import DBClient
 from tastpardy.models import Question
+
+
+@dataclass
+class ChannelStats:
+    members: list[str]|None
+    topic: str|None
+    name: str|None
 
 
 class GameRunner(abc.ABC):
@@ -27,12 +35,18 @@ class GameRunner(abc.ABC):
         :param seconds: The number of seconds to wait.
         """
         pass
+    
+    @abc.abstractmethod
+    def channel_stats(self) -> ChannelStats:
+        """Returns information about the public channel attached to the runner."""
+        pass
 
 
 class Game(object):
     def __init__(self, runner: GameRunner, dbpath: str | None = None):
         self.id = uuid.uuid4()
         self.runner = runner
+
         if dbpath:
             self.session = DBClient(path=dbpath).get_session()
         else:
