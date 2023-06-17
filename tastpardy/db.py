@@ -7,8 +7,8 @@ from tastpardy.models import Base
 
 
 class DBClient(object):
-    def __init__(self, path: str = '../data.db', echo: bool = False):
-        sqlite_path = f'sqlite:///{path}'
+    def __init__(self, path: str = "../data.db", echo: bool = False):
+        sqlite_path = f"sqlite:///{path}"
         self.engine = create_engine(sqlite_path, echo=echo)
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()
