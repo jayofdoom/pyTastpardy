@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 
-import json
 
 @dataclass_json
 @dataclass
@@ -13,6 +12,7 @@ class IRCConfig:
     pw: str
     channel: str
     admins: list[str]
+
 
 @dataclass_json
 @dataclass

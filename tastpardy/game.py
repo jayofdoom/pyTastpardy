@@ -1,7 +1,4 @@
 import abc
-import functools
-import time
-from typing import Union
 import uuid
 
 from sqlalchemy import func
@@ -12,21 +9,12 @@ from tastpardy.models import Question
 
 class GameRunner(abc.ABC):
     @abc.abstractmethod
-    def public_message(self, message: list[str]):
+    def message(self, message: list[str], target: str):
         """Send one or more messages to the public channel.
 
         Messages sent by this should be sent as fast as the backend allows.
 
         :param message: A string or list of strings to send to the public channel.
-        """
-        pass
-
-    @abc.abstractmethod
-    def private_message(self, nick: str, message: list[str]):
-        """Send one or more messages to a specific user.
-
-        :param nick: The nick of the user to send the message to.
-        :param message: A string or list of strings to send to the user.
         """
         pass
 
@@ -50,11 +38,11 @@ class Game(object):
         else:
             self.session = DBClient().get_session()
     
-    def single_question(self):
+    def single_question(self, target : str):
         """Returns a list of actions to perform the requested game action."""
         question = self.session.query(Question).order_by(func.random()).limit(1).one()
 
-        self.runner.public_message([
+        self.runner.message([
             "Let's play Tastpardy! Only one question for now. "
             "You'll get 30 seconds to think, then I'll give you the answer!",
             "-------------------",
@@ -62,8 +50,8 @@ class Game(object):
             question.aired, question.difficulty, question.category.name),
             "-------------------",
             str(question.question),
-        ])
+        ], target)
         self.runner.wait(30)
-        self.runner.public_message([
+        self.runner.message([
             "The answer was: What is {}? I hope you got it right!".format(
-            question.answer)])
+            question.answer)], target)

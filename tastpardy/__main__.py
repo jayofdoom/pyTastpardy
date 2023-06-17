@@ -1,5 +1,3 @@
-import json
-
 import click
 
 from tastpardy.config import Config
@@ -8,7 +6,7 @@ from tastpardy.irc import TastyIRCBot
 
 @click.command()
 @click.option('--config', required=True, help='Path to a config file in the style of configexample.json')
-def tastpardy(config):
+def tastpardy(config : str):
     """Tasty game and chat bot!"""
     try:
         with open(config) as f:

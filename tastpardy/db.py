@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, event
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlite3 import Connection
 
