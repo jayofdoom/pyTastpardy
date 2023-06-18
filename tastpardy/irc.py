@@ -2,7 +2,9 @@ from dataclasses import dataclass
 import ssl
 import time
 from typing import Any, Callable
+import uuid
 
+import eventlet
 from irc.bot import ExponentialBackoff, SingleServerIRCBot
 from irc.connection import Factory
 import irc.strings
@@ -20,6 +22,9 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
         self.conf = conf
         self.channel = self.conf.channel
         self.game = Game(self, dbpath=dbpath)
+        self.message_listeners: dict[str, Callable[[str, str, str], None]] = {}
+
+        self.pool = eventlet.GreenPool()
 
         connect_params = {}
         if conf.ssl:
@@ -41,8 +46,8 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
             msg_func(target, m)
 
     def wait(self, seconds: int | float):
-        time.sleep(seconds)
-    
+        eventlet.sleep(int(seconds))
+
     def channel_stats(self) -> ChannelStats:
         chname, chobj = self.channels[0]
         return ChannelStats(
@@ -50,6 +55,15 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
             topic=chobj.topic,
             name=chname,
         )
+
+    def listen_for_messages(self, callback: Callable[[str, str, str], None]) -> str:
+        listener_id = str(uuid.uuid4())
+        print("Registering listener: {}".format(listener_id))
+        self.message_listeners[listener_id] = callback
+        return listener_id
+
+    def abort_listener(self, listener_id: str) -> None:
+        del self.message_listeners[listener_id]
 
     def on_nicknameinuse(self, c, e):
         c.nick(c.get_nickname() + "_")
@@ -64,27 +78,42 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
         self.handle_command(e.source.nick, e.arguments[0], e.source.nick)
 
     def on_pubmsg(self, c, e):
-        if e.arguments[0][0] == "?":
-            self.handle_command(e.source.nick, e.arguments[0][1:].strip(), self.channel)
-        else:
-            target_nick = e.arguments[0].split(":", 1)[0].strip()
-            if target_nick and irc.strings.lower(target_nick) == irc.strings.lower(
-                self.connection.get_nickname()
-            ):
+        def run_listener(listener: tuple[str, Callable[[str, str, str], None]]) -> None:
+            listener[1](listener[0], e.source.nick, e.arguments[0])
+
+        def handle_pubmsg():
+            if e.arguments[0][0] == "?":
                 self.handle_command(
-                    e.source.nick, e.arguments[0].split(":", 1)[1].strip(), self.channel
+                    e.source.nick, e.arguments[0][1:].strip(), self.channel
                 )
+            else:
+                target_nick = e.arguments[0].split(":", 1)[0].strip()
+                if target_nick and irc.strings.lower(target_nick) == irc.strings.lower(
+                    self.connection.get_nickname()
+                ):
+                    self.handle_command(
+                        e.source.nick,
+                        e.arguments[0].split(":", 1)[1].strip(),
+                        self.channel,
+                    )
+
+        if self.message_listeners:
+            self.pool.imap(run_listener, self.message_listeners.items())
+        self.pool.spawn_n(handle_pubmsg)
+        return None
 
     def handle_command(self, nick: str, cmd_name: str, target: str):
         # Always prioritize IRC commands over game commands
         if cmd_name in irc_registry.commands:
-            cmd = irc_registry.commands[cmd_name]    
+            cmd = irc_registry.commands[cmd_name]
             if cmd.admin and self.conf.admins:
                 if nick not in self.conf.admins:
                     self.not_tasty(nick)
-                    return            
+                    return
 
-            cmd.exec(self, nick, target)
+            self.pool.spawn_n(cmd.exec(self, nick, target))
+
+        return None
 
     def not_tasty(self, nick: str):
         self.connection.notice(nick, "Not tasty.")

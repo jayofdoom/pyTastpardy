@@ -14,11 +14,13 @@ classifiers = ['Programming Language :: Python :: 3.10']
 dependencies = [
     'click',
     'dataclasses_json',
-    'fuzzywuzzy',
+    'eventlet',
     'irc',
     'pyyaml',
     'python-Levenshtein',
     'sqlalchemy>=2.0',
+    'thefuzz',
+    'thefuzz[speedup]',
 ]
 dynamic = ['version']
 

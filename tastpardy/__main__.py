@@ -1,4 +1,5 @@
 import click
+import eventlet
 
 from tastpardy.config import Config
 from tastpardy.irc import TastyIRCBot
@@ -14,7 +15,7 @@ def tastpardy(config: str):
     """Tasty game and chat bot!"""
     try:
         with open(config) as f:
-            conf = Config.from_json(f.read()) # type: ignore
+            conf = Config.from_json(f.read())  # type: ignore
     except FileNotFoundError:
         print(
             "Config file not found. Please create a config file in the style of configexample.json."
@@ -33,4 +34,5 @@ def tastpardy(config: str):
 
 
 if __name__ == "__main__":
+    eventlet.monkey_patch()
     tastpardy()

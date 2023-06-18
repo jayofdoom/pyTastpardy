@@ -1,4 +1,4 @@
-from fuzzywuzzy import fuzz
+from thefuzz import fuzz
 from sqlalchemy import func
 
 from tastpardy.db import DBClient

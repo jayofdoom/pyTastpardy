@@ -1,16 +1,18 @@
 from dataclasses import dataclass
 from typing import Any, Callable
 
+
 @dataclass
 class Command:
     name: str
     admin: bool
     exec: Callable[[Any, str, str], Any]
 
+
 class CommandRegistry(object):
     def __init__(self):
-        self.commands : dict[str, Command] = {}
-    
+        self.commands: dict[str, Command] = {}
+
     def __contains__(self, name: str) -> bool:
         return name in self.commands
 
