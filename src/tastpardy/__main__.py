@@ -1,5 +1,4 @@
 import click
-import eventlet
 
 from tastpardy.config import Config
 from tastpardy.irc import TastyIRCBot
@@ -34,5 +33,4 @@ def tastpardy(config: str):
 
 
 if __name__ == "__main__":
-    eventlet.monkey_patch()
     tastpardy()

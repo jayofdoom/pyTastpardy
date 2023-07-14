@@ -17,6 +17,16 @@ class ChannelStats:
     name: str | None
 
 
+@dataclass
+class Response:
+    nick: str
+    message: str
+    accuracy: int
+
+    def __str__(self):
+        return f"{self.nick} answered {self.message}, which was {self.accuracy}% correct."
+
+
 class GameRunner(abc.ABC):
     @abc.abstractmethod
     def message(self, message: list[str], target: str):
@@ -82,7 +92,7 @@ class Game(object):
     def single_question(self, target: str):
         """Returns a list of actions to perform the requested game action."""
         question = self.session.query(Question).order_by(func.random()).limit(1).one()
-        responses: dict[str, int] = {}
+        responses: dict[str, Response] = {}
 
         def evaluate_response(id: str, nick: str, msg: str) -> None:
             print("Evaluating: {}, {}, {}".format(id, nick, msg))
@@ -90,13 +100,13 @@ class Game(object):
                 utils.full_process(question.answer), utils.full_process(msg)
             )
             print(
-                "Evaluated {} from {} as {} percent correct".format(nick, msg, result)
+                "Evaluated {} answer: {} as {}% correct".format(nick, msg, result)
             )
-            if nick in responses and responses[nick] > result:
+            if nick in responses and responses[nick].accuracy > result:
                 return
 
             if result > 60:
-                responses[nick] = result
+                responses[nick] = Response(nick, msg, result)
 
         self.runner.message(
             [
@@ -116,10 +126,11 @@ class Game(object):
         listener_id = self.runner.listen_for_messages(evaluate_response)
         self.runner.wait(30)
         self.runner.abort_listener(listener_id)
-        if len(responses) == 0:
-            sorted(responses.items(), key=lambda x: x[1], reverse=True)
-        for r in responses.items():
-            answers.append("Answer from {} was {} percent correct.".format(r[0], r[1]))
+        if len(responses) != 0:
+            sorted(responses.values(), key=lambda x: x.accuracy, reverse=True)
+
+        for r in responses.values():
+            answers.append(str(r))
 
         if answers:
             self.runner.message(

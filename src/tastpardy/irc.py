@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 import ssl
 import time
@@ -79,9 +80,15 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
         self.handle_command(e.source.nick, e.arguments[0], e.source.nick)
 
     def on_pubmsg(self, c, e):
+        if e.source.nick.lower() == self.connection.get_nickname().lower():
+            return None
+
         listeners = self.message_listeners.copy()
         def run_listener(listener: tuple[str, Callable[[str, str, str], None]]) -> None:
-            listener[1](listener[0], e.source.nick, e.arguments[0])
+            listener_id = copy.deepcopy(listener[0])
+            runner = copy.deepcopy(listener[1])
+            if runner is not None:
+                runner(listener_id, e.source.nick, e.arguments[0])
 
         def handle_pubmsg():
             if e.arguments[0][0] == "?":
@@ -99,12 +106,8 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
                         self.channel,
                     )
 
-        if e.source.nick.lower() == self.connection.get_nickname().lower():
-            return None
-
         if listeners:
             self.pool.imap(run_listener, listeners.items())
-            self.pool.waitall()
 
         self.pool.spawn_n(handle_pubmsg)
 
@@ -120,7 +123,7 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
                     return
 
             if cmd and cmd.exec:
-                self.pool.spawn_n(cmd.exec(self, nick, target))
+                self.pool.spawn_n(cmd.exec, self, nick, target)
 
         return None
 
@@ -129,7 +132,7 @@ class TastyIRCBot(SingleServerIRCBot, GameRunner):
 
     @irc_registry.register("question")
     def question(self, nick: str, target: str):
-        self.gamePool.spawn_n(self.game.single_question(target))
+        self.pool.spawn_n(self.game.single_question, target)
 
     @irc_registry.register("botsnacks")
     def botsnacks(self, nick: str, target: str):
