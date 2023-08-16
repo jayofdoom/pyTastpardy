@@ -7,3 +7,4 @@ build
 typings
 .mypy_cache
 config.json
+.vscode/*

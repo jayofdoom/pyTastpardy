@@ -32,6 +32,9 @@ dev = [
     'mypy',
     'mypy-extensions',
 ]
+openai = [
+    'openai'
+]
 
 [tool.mypy]
 disable_error_code = 'annotation-unchecked'
